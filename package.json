@@ -10,6 +10,8 @@
   "description": "gamegroche bot",
   "main": "index.js",
   "devDependencies": {
+    "@babel/eslint-parser": "^7.19.1",
+    "@babel/preset-typescript": "^7.18.6",
     "eslint": "^8.25.0",
     "typescript": "^4.8.4"
   },
