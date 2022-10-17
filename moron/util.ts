@@ -2,7 +2,14 @@
 /// error override interface so we can get an actual error code
 ///
 
-import { Guild, GuildEmoji } from 'discord.js';
+import {
+	Channel,
+	Guild,
+	GuildEmoji,
+	TextBasedChannel,
+	VoiceBasedChannel,
+	VoiceChannel,
+} from 'discord.js';
 
 //i shouldn't have to do this
 export declare interface Error {

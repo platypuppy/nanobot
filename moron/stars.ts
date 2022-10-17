@@ -66,6 +66,8 @@ export async function stars_initialize() {
 		}
 
 		logger.log('Pinned messages loaded.', WarningLevel.Notice);
+	} else {
+		logger.log('started in dev mode', WarningLevel.Warning);
 	}
 }
 
@@ -157,8 +159,8 @@ export function stars_onStarAdded(
 
 const reactTexts = [
 	'bruh moment',
-	'why would they do this',
-	'i always knew they were like this',
+	'why would you do this',
+	'i always knew you were like this',
 	'freakin epic',
 	'i cannot believe this',
 	'this is offensive in some countries',

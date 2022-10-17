@@ -48,7 +48,7 @@ function basicReplyFunction(replyList: string[]): (msg: Message) => void {
 
 let client: Client;
 
-export function chatty_initialize(clientInstance: Client) {
+export function chatty_init(clientInstance: Client) {
 	client = clientInstance;
 }
 
@@ -123,16 +123,7 @@ export function chatty_onMessageSend(msg: Message) {
 		triggerIfMsgContains(
 			msg,
 			stringSet(
-				[
-					'fuck off',
-					'pissed',
-					'angry',
-					'fuck',
-					'retarded',
-					'annoying',
-					'annoyed',
-					'skill issue',
-				],
+				['pissed', 'angry', 'fuck', 'retarded', 'annoying', 'annoyed'],
 				true,
 				true,
 			),
@@ -142,6 +133,7 @@ export function chatty_onMessageSend(msg: Message) {
 				'seethe',
 				'sneethe',
 				'cope',
+				'skill issue',
 				'ur feelings are valid',
 			]),
 		)
@@ -172,8 +164,14 @@ export function chatty_onMessageSend(msg: Message) {
 	} else if (
 		triggerIfMsgContains(
 			msg,
-			stringSet(['msg1', 'msg2', 'msg3'], true, true),
-			basicReplyFunction(['test', 'test2', 'test3']),
+			stringSet(['im busy', 'i am busy', 'be busy'], true, true),
+			basicReplyFunction([
+				"You're always busy",
+				'Are you really busy or just not making it a priority',
+				"who's a cute little busy worker bee\n\n(it's you)",
+				'if you ask nicely they might reschedule',
+				'ok',
+			]),
 		)
 	) {
 		return;

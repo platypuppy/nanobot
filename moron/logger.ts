@@ -17,7 +17,7 @@ export class Logger {
 	moduleName: string;
 	minWarningLevel: number;
 
-	log(msg: string, warningLevel?: number) {
+	log(msg: string | undefined, warningLevel?: number) {
 		if (!warningLevel) warningLevel = 0;
 
 		if (
@@ -27,16 +27,16 @@ export class Logger {
 			const now = new Date();
 			console.log(
 				'[' +
-					now.getHours() +
+					now.getHours().toString().padStart(2, '0') +
 					':' +
-					now.getMinutes() +
+					now.getMinutes().toString().padStart(2, '0') +
 					':' +
-					now.getSeconds() +
+					now.getSeconds().toString().padStart(2, '0') +
 					'] [moron/' +
 					this.moduleName +
 					'] ' +
 					warningLevels[warningLevel] +
-					msg,
+					msg ?? 'undefined',
 			);
 		}
 	}
