@@ -17,12 +17,12 @@ export function daily_init(clientInstance: Client) {
 	// https://crontab.guru/#*_*_*_*_*
 	// useful resource for writing cron tags
 
-	let dailySchedule = new cron.CronJob('00 12 * * 1,3,5', () => {
-		logger.log('running daily job', WarningLevel.Notice);
+	let xkcd = new cron.CronJob('00 12 * * 1,3,5', () => {
+		logger.log('running XKCD job', WarningLevel.Notice);
 		check_xkcd();
 	});
 
-	dailySchedule.start();
+	xkcd.start();
 
 	init_xkcd(client);
 }
