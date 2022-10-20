@@ -1,12 +1,10 @@
 import RssParser from 'rss-parser';
 import { Logger, WarningLevel } from '../logger';
-const { serverLog, grocheCentral } = require('../../groche-channels.json');
+import { serverLog, grocheCentral } from '../../groche-channels.json';
 import HtmlParser from 'node-html-parser';
 import { Client, EmbedBuilder, TextBasedChannel } from 'discord.js';
 import * as fs from 'fs';
-import { Error } from '../util';
-const { xkcdDBFolder, xkcdDBFile } = require('../../config/xkcd.json');
-const xkcdCache: string = xkcdDBFolder + xkcdDBFile;
+import { Error, readCacheFile, writeCacheFile } from '../util';
 
 let rssParser: RssParser;
 let logger: Logger = new Logger('feeds/xkcd', WarningLevel.Warning);
@@ -72,25 +70,16 @@ export async function check_xkcd() {
 
 	let lastComic: string = '';
 
-	try {
-		lastComic = JSON.parse(fs.readFileSync(xkcdCache).toString()).lastComic;
-	} catch (error: any) {
-		//create new db file if it does not already exist
-		if ((error as Error).code === 'ENOENT') {
-			try {
-				fs.writeFileSync(xkcdCache, JSON.stringify({ lastComic: '' }));
-			} catch (error: any) {
-				if ((error as Error).code === 'ENOENT') {
-					fs.mkdirSync(xkcdDBFolder);
-					fs.writeFileSync(xkcdCache, JSON.stringify({ lastComic: '' }));
-				} else {
-					logger.log(error, WarningLevel.Error);
-				}
-			}
-		} else {
-			logger.log(error, WarningLevel.Error);
-		}
+	let cache = readCacheFile('xkcd.json');
+	if (!cache) {
+		logger.log(
+			'Failed to load cache data for some reason!',
+			WarningLevel.Error,
+		);
+		return;
 	}
+
+	lastComic = JSON.parse(cache.toString()).lastComic;
 
 	if (todaysComic.guid == lastComic) {
 		return;
@@ -100,12 +89,10 @@ export async function check_xkcd() {
 
 	// write back to file
 
-	try {
-		fs.writeFileSync(xkcdCache, JSON.stringify({ lastComic: lastComic }));
-	} catch (error: any) {
-		logger.log(error, WarningLevel.Error);
-		return;
-	}
+	writeCacheFile(
+		'xkcd.json',
+		Buffer.from(JSON.stringify({ lastComic: lastComic })),
+	);
 
 	// fix up any missing fields
 

@@ -51,9 +51,6 @@ client.once('ready', () => {
 client.on('interactionCreate', async interaction => {
 	if (!interaction.isChatInputCommand()) return;
 	const { commandName } = interaction;
-
-	if (commandName === 'showcard') {
-	}
 });
 
 client.on('messageCreate', async msg => {
