@@ -98,6 +98,29 @@ export function doesMatch(
 	return cmpString1.includes(cmpString2);
 }
 
+// returns the index of the beginning of the match of the specified string
+// returns -1 if no match was found
+export function whereMatch(
+	inputString: string,
+	testString: StringMatch,
+): number {
+	let cmpString1: string = inputString;
+	let cmpString2: string = testString.match;
+
+	if (testString.ignoreCapitalization) {
+		cmpString1 = cmpString1.toLowerCase();
+		cmpString2 = cmpString2.toLowerCase();
+	}
+
+	if (testString.ignorePunctuation) {
+		punctuationChars.forEach(char => {
+			cmpString1.replace(char, '');
+			cmpString2.replace(char, '');
+		});
+	}
+
+	return cmpString1.indexOf(cmpString2);
+}
 ///
 /// emoji handling stuff
 ///

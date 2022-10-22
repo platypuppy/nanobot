@@ -69,6 +69,9 @@ const buzzwordList = [
 	(msg: Message) => emojiBuzzword(msg, 'comfy', emoteYomiSmile),
 	(msg: Message) => emojiBuzzword(msg, 'clearly', emoteClearly),
 	(msg: Message) => emojiBuzzword(msg, 'cursed', emoteSethCP),
+	(msg: Message) => emojiBuzzword(msg, 'seth mode', emoteSethCP),
+	(msg: Message) => emojiBuzzword(msg, 'sethmode', emoteSethCP),
+	(msg: Message) => emojiBuzzword(msg, 'sethmoding', emoteSethCP),
 	(msg: Message) => emojiBuzzword(msg, 'repost', emoteDownload),
 	(msg: Message) => emojiBuzzword(msg, 'mommy', emoteJii),
 	(msg: Message) => emojiBuzzword(msg, 'daddy', emoteJii),
@@ -78,7 +81,6 @@ const buzzwordList = [
 	(msg: Message) => emojiBuzzword(msg, 'glitch', emoteShit),
 	(msg: Message) => emojiBuzzword(msg, 'fucked up', emoteShit),
 	(msg: Message) => emojiBuzzword(msg, 'missingno', emoteShit),
-	(msg: Message) => emojiBuzzword(msg, 'x', emoteMcfx2),
 	(msg: Message) => emojiBuzzword(msg, 'mcfx2', emoteMcfx2),
 	(msg: Message) => emojiBuzzword(msg, 'minecraft effects', emoteMcfx2),
 	(msg: Message) => emojiBuzzword(msg, 'camaro', emoteCamaro),
@@ -145,7 +147,7 @@ export async function reactor_onMessageSend(msg: Message) {
 	}
 
 	if (!devMode) {
-		if (!msg.mentions.has(client.user) && Math.random() > 0.25) {
+		if (!msg.mentions.has(client.user) && Math.random() > 0.15) {
 			return;
 		}
 	}
