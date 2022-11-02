@@ -4,5 +4,8 @@
 	},
 	"eslint.validate": [
 		"typescript"
-	]
+	],
+	"files.associations": {
+		"xiosbase": "cpp"
+	}
 }

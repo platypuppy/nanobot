@@ -121,6 +121,63 @@ export function whereMatch(
 
 	return cmpString1.indexOf(cmpString2);
 }
+
+// get the index and candidate that matched a given input string
+// this returns the earliest match in the input string out of all candidates
+// and returns undefined if no match was found
+export function getEarliestMatch(
+	inputString: string,
+	matchCandidates: StringMatch[],
+): { matchedString: string; matchedIndex: number } | undefined {
+	let beforeMatch: StringMatch | undefined;
+	let beforeMatchPos: number = -1;
+	if (matchCandidates.length > 0) {
+		matchCandidates.forEach((match: StringMatch) => {
+			let matchPos = whereMatch(inputString, match);
+			if (matchPos !== -1) {
+				if (beforeMatchPos === -1) {
+					beforeMatchPos = matchPos;
+					beforeMatch = match;
+				} else if (beforeMatchPos > matchPos) {
+					beforeMatchPos = matchPos;
+					beforeMatch = match;
+				}
+			}
+		});
+		if (beforeMatch === undefined) return undefined;
+		return { matchedString: beforeMatch.match, matchedIndex: beforeMatchPos };
+	}
+	return undefined;
+}
+
+// get the index and candidate that matched a given input string
+// this returns the furthest match in the input string out of all candidates
+// and returns undefined if no match was found
+export function getLastMatch(
+	inputString: string,
+	matchCandidates: StringMatch[],
+): { matchedString: string; matchedIndex: number } | undefined {
+	let lastMatch: StringMatch | undefined;
+	let lastMatchPos: number = -1;
+	if (matchCandidates.length > 0) {
+		matchCandidates.forEach((match: StringMatch) => {
+			let matchPos = whereMatch(inputString, match);
+			if (matchPos !== -1) {
+				if (lastMatchPos === -1) {
+					lastMatchPos = matchPos;
+					lastMatch = match;
+				} else if (lastMatchPos < matchPos) {
+					lastMatchPos = matchPos;
+					lastMatch = match;
+				}
+			}
+		});
+		if (lastMatch === undefined) return undefined;
+		return { matchedString: lastMatch.match, matchedIndex: lastMatchPos };
+	}
+	return undefined;
+}
+
 ///
 /// emoji handling stuff
 ///
