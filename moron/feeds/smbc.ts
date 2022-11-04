@@ -5,23 +5,28 @@ import HtmlParser from 'node-html-parser';
 import { Client, EmbedBuilder, TextBasedChannel } from 'discord.js';
 import {
 	Error,
+	getSingleElement,
 	readCacheFile,
 	writeCacheFile,
-	getSingleElement,
 } from '../util';
 
-let rssParser: RssParser;
-let logger: Logger = new Logger('feeds/xkcd', WarningLevel.Warning);
+const devMode: boolean = false;
 
+const logger: Logger = new Logger(
+	'feeds/smbc',
+	devMode ? WarningLevel.Notice : WarningLevel.Warning,
+);
+
+let rssParser: RssParser;
 let client: Client;
 
-export function init_xkcd(clientInstance: Client) {
+export function init_smbc(clientInstance: Client) {
 	client = clientInstance;
 
 	rssParser = new RssParser();
 }
 
-export async function check_xkcd() {
+export async function check_smbc() {
 	if (!rssParser) {
 		logger.log(
 			'Tried to check for daily update when we were not initialized!',
@@ -30,22 +35,30 @@ export async function check_xkcd() {
 		return;
 	}
 
-	let feed = await rssParser.parseURL('https://xkcd.com/rss.xml');
+	let feed = await rssParser.parseURL('https://www.smbc-comics.com/comic/rss');
 
 	const todaysComic = feed.items[0];
 
 	const imgData = getSingleElement(todaysComic.content, 'img', logger);
 
-	if (!imgData) {
-		return;
-	}
+	if (!imgData) return;
 
 	let imgUrl = imgData.getAttribute('src');
-	let altText = imgData.getAttribute('alt');
+
+	const textData = getSingleElement(todaysComic.content, 'p', logger);
+
+	if (!textData) return;
 
 	let pubDate = todaysComic.pubDate ? new Date(todaysComic.pubDate) : undefined;
 
-	logger.log(todaysComic.title);
+	let comicTitle = todaysComic.title?.replace(
+		'Saturday Morning Breakfast Cereal - ',
+		'',
+	);
+
+	let altText = textData.text.replace('Hovertext:', '');
+
+	logger.log(comicTitle);
 	logger.log(imgUrl);
 	logger.log(altText);
 	logger.log(todaysComic.guid);
@@ -63,31 +76,33 @@ export async function check_xkcd() {
 
 	// determine whether this comic was already sent
 
-	let lastComic: string = '';
+	if (!devMode) {
+		let lastComic: string = '';
 
-	let cache = readCacheFile('xkcd.json');
-	if (!cache) {
-		logger.log(
-			'Failed to load cache data for some reason!',
-			WarningLevel.Error,
+		let cache = readCacheFile('smbc.json');
+		if (!cache) {
+			logger.log(
+				'Failed to load cache data for some reason!',
+				WarningLevel.Error,
+			);
+			return;
+		}
+
+		lastComic = JSON.parse(cache.toString()).lastComic;
+
+		if (todaysComic.guid == lastComic) {
+			return;
+		}
+
+		lastComic = todaysComic.guid;
+
+		// write back to file
+
+		writeCacheFile(
+			'smbc.json',
+			Buffer.from(JSON.stringify({ lastComic: lastComic })),
 		);
-		return;
 	}
-
-	lastComic = JSON.parse(cache.toString()).lastComic;
-
-	if (todaysComic.guid == lastComic) {
-		return;
-	}
-
-	lastComic = todaysComic.guid;
-
-	// write back to file
-
-	writeCacheFile(
-		'xkcd.json',
-		Buffer.from(JSON.stringify({ lastComic: lastComic })),
-	);
 
 	// fix up any missing fields
 
@@ -104,36 +119,28 @@ export async function check_xkcd() {
 		pubDate = new Date();
 	}
 
-	if (!todaysComic.title) {
+	if (!comicTitle) {
 		logger.log("No title for today's comic! ", WarningLevel.Warning);
 
-		todaysComic.title = 'Untitled';
+		comicTitle = 'Untitled';
 	}
 
 	// send comic
 
 	const channel = (await client.channels.fetch(
-		grocheCentral,
+		devMode ? serverLog : grocheCentral,
 	)) as TextBasedChannel;
 
-	let explainUrl = todaysComic.guid.replace('xkcd', 'explainxkcd');
-
-	let xkcdEmbed = new EmbedBuilder()
+	let smbcEmbed = new EmbedBuilder()
 		.setAuthor({
-			name: 'xkcd',
-			url: 'https://xkcd.com',
-			iconURL: 'https://xkcd.com/s/0b7742.png',
+			name: 'Saturday Morning Breakfast Cereal',
+			url: 'https://www.smbc-comics.com/',
+			iconURL: 'https://www.smbc-comics.com/images/moblogo.png',
 		})
-		.setFields([
-			{
-				name: todaysComic.title,
-				value: '[Explain the joke](' + explainUrl + ')',
-				inline: false,
-			},
-		])
+		.setTitle(comicTitle)
 		.setImage(imgUrl)
 		.setTimestamp(pubDate)
 		.setFooter({ text: altText });
 
-	channel.send({ embeds: [xkcdEmbed] });
+	channel.send({ embeds: [smbcEmbed] });
 }

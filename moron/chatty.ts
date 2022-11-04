@@ -23,7 +23,7 @@ import {
 const { serverLog } = require('../groche-channels.json');
 
 // dev mode here makes the bot reply with 100% probability, and makes it only reply in serverLog
-const devMode: boolean = true;
+const devMode: boolean = false;
 
 const logger: Logger = new Logger(
 	'chatty',
@@ -66,10 +66,7 @@ function getTopic(
 	afterPhrase?: string,
 ): string {
 	if (beforePhrase && beforePhrase !== '') {
-		logger.log(beforePhrase);
-		logger.log(msg);
 		msg = msg.substring(msg.indexOf(beforePhrase) + beforePhrase.length);
-		logger.log(msg);
 	}
 	if (afterPhrase && afterPhrase !== '') {
 		msg = msg.substring(0, msg.indexOf(afterPhrase));
@@ -96,6 +93,7 @@ function smartReply(
 	afterPhrases: StringMatch[],
 	stopAtPhraseEnd: boolean = true,
 	useLastAfterMatch: boolean = false,
+	swapYouMe: boolean = false,
 ): boolean {
 	// find the earliest occurring match
 	// this is required in case the begin/end phrases
@@ -130,6 +128,10 @@ function smartReply(
 	).trimStart();
 	if (stopAtPhraseEnd) {
 		topic = topic.substring(0, getPhraseEnd(topic)).trimEnd();
+	}
+
+	if (swapYouMe) {
+		topic.replace('you', 'me');
 	}
 
 	msg.reply({
@@ -199,6 +201,9 @@ export function chatty_onMessageSend(msg: Message) {
 					'how fast is',
 					'how quick is',
 					'how rapid is',
+					'how fast does',
+					'how quickly does',
+					'how rapidly does',
 				],
 				true,
 				true,
@@ -263,12 +268,32 @@ export function chatty_onMessageSend(msg: Message) {
 		smartReply(
 			msg,
 			[
-				topic => 'placeholder1',
-				topic => 'placeholder2',
-				topic => 'placeholder3',
+				topic => "yeah? you're " + topic + ' retarded',
+				topic => "oh really? you're " + topic + ' cute',
+				topic =>
+					'ok but you are ' +
+					topic +
+					' wrong so put that in your pipe and smoke it',
+				topic => 'and?',
 			],
-			stringSet(['test1', 'test2'], true, true),
-			stringSet(['test3', 'test4'], true, true),
+			stringSet(['you are', 'youre'], true, true),
+			stringSet(
+				[
+					'wrong',
+					'retarded',
+					'stupid',
+					'dumb',
+					'bad',
+					'evil',
+					'gay',
+					'right',
+					'good',
+					'cute',
+					'sick',
+				],
+				true,
+				true,
+			),
 		)
 	) {
 		return;
@@ -276,12 +301,34 @@ export function chatty_onMessageSend(msg: Message) {
 		smartReply(
 			msg,
 			[
-				topic => 'placeholder1',
-				topic => 'placeholder2',
-				topic => 'placeholder3',
+				topic =>
+					'too bad ur getting more ' + topic + ' whether u like it or not',
+				topic => 'i love ' + topic,
+				topic => 'i hate ' + topic + ' too',
+				topic =>
+					'ur problems with ' +
+					topic +
+					' are likely a product of problems at home',
+				topic => 'ngl u kinda got me thinking about ' + topic + ' now',
+				topic =>
+					'for someone who hates ' + topic + ' u sure have a lot in common',
 			],
-			stringSet(['test1', 'test2'], true, true),
-			stringSet(['test3', 'test4'], true, true),
+			stringSet(
+				[
+					'i hate',
+					'i despise',
+					'i cannot stand',
+					'i cant stand',
+					'i cant deal with',
+					'i am sick of',
+				],
+				true,
+				false,
+			),
+			[],
+			true,
+			false,
+			true,
 		)
 	) {
 		return;
@@ -742,6 +789,62 @@ export function chatty_onMessageSend(msg: Message) {
 				'some things ur better off not knowing',
 				"I'd tell you to ask god but my inbox is full",
 			]),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['i c', 'i see', ' ic '], true, true),
+			basicReplyFunction(['u p']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
+		)
+	) {
+		return;
+	} else if (
+		triggerIfMsgContains(
+			msg,
+			stringSet(['msg1', 'msg2', 'msg3'], true, true),
+			basicReplyFunction(['test', 'test2', 'test3']),
 		)
 	) {
 		return;

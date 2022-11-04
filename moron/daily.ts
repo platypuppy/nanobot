@@ -4,6 +4,7 @@ import { Client, Message } from 'discord.js';
 import { check_xkcd, init_xkcd } from './feeds/xkcd';
 import * as cron from 'cron';
 import { check_normie, init_normie } from './feeds/normie';
+import { check_smbc, init_smbc } from './feeds/smbc';
 
 const devMode = false;
 
@@ -13,6 +14,10 @@ let logger: Logger = new Logger('daily', WarningLevel.Warning);
 
 export function daily_init(clientInstance: Client) {
 	client = clientInstance;
+
+	init_xkcd(client);
+	init_normie(client);
+	init_smbc(client);
 
 	// set up scheduling
 	// https://crontab.guru/#*_*_*_*_*
@@ -28,9 +33,12 @@ export function daily_init(clientInstance: Client) {
 		check_normie();
 	});
 
+	let smbc = new cron.CronJob('35 14 * * *', () => {
+		logger.log('running SMBC job', WarningLevel.Notice);
+		check_smbc();
+	});
+
 	xkcd.start();
 	normie.start();
-
-	init_xkcd(client);
-	init_normie(client);
+	smbc.start();
 }

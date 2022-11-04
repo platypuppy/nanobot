@@ -65,9 +65,50 @@ function emojiBuzzword(
 	return false;
 }
 
+function asciiBuzzword(
+	msg: Message,
+	word: string,
+	emoji: string,
+	ignoreSymb: boolean = true,
+	ignoreCase: boolean = true,
+): boolean {
+	if (
+		doesMatch(msg.content, {
+			match: word,
+			ignoreCapitalization: ignoreCase,
+			ignorePunctuation: ignoreSymb,
+		})
+	) {
+		msg.react(emoji);
+		return true;
+	}
+	return false;
+}
+
 const buzzwordList = [
 	(msg: Message) => emojiBuzzword(msg, 'comfy', emoteYomiSmile),
 	(msg: Message) => emojiBuzzword(msg, 'clearly', emoteClearly),
+	(msg: Message) => asciiBuzzword(msg, 'healthcare', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'healthy', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'burger', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'expensive', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'inflation', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'corruption', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'invasion', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'freedom', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'independence', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'privatized', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'gun', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'firework', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'america', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'war', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'middle east', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'taliban', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, '9/11', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'military', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'immigration', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'visa', '🇺🇸'),
+	(msg: Message) => asciiBuzzword(msg, 'immigrant', '🇺🇸'),
 	(msg: Message) => emojiBuzzword(msg, 'cursed', emoteSethCP),
 	(msg: Message) => emojiBuzzword(msg, 'seth mode', emoteSethCP),
 	(msg: Message) => emojiBuzzword(msg, 'sethmode', emoteSethCP),

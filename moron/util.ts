@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as settings from '../config/general.json';
 import { Logger, WarningLevel } from './logger';
+import HtmlParser, { HTMLElement } from 'node-html-parser';
 
 ///
 /// set up logger for util functions
@@ -239,4 +240,31 @@ export function readCacheFile(filename: string): Buffer | undefined {
 		}
 		return undefined;
 	}
+}
+
+///
+/// RSS parsing convenience
+///
+
+export function getSingleElement(
+	htmlSource: string | undefined,
+	tagName: string,
+	errorLogger: Logger,
+): HTMLElement | undefined {
+	const elements = HtmlParser.parse(htmlSource ?? '< />').getElementsByTagName(
+		tagName,
+	);
+
+	if (elements.length !== 1) {
+		errorLogger.log(
+			'Number of elements matching ' +
+				tagName +
+				' tag was ' +
+				elements.length +
+				' but we expected one! Did the RSS syntax change?',
+			WarningLevel.Error,
+		);
+		return undefined;
+	}
+	return elements[0];
 }
