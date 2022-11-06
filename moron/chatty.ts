@@ -10,6 +10,7 @@ import {
 	ReactionEmoji,
 	TextChannel,
 } from 'discord.js';
+import { registerMessageListener } from '..';
 import { Logger, WarningLevel } from './logger';
 import {
 	StringMatch,
@@ -151,15 +152,17 @@ function smartReply(
 
 let client: Client;
 
-export function chatty_init(clientInstance: Client) {
+export async function chatty_init(clientInstance: Client) {
 	if (devMode) {
 		logger.log('Initialized in dev mode');
 	}
 
 	client = clientInstance;
+
+	registerMessageListener(chatty_onMessageSend);
 }
 
-export function chatty_onMessageSend(msg: Message) {
+export async function chatty_onMessageSend(msg: Message) {
 	if (!client || !client.user) {
 		logger.log(
 			'Message received when no client instance was set!',

@@ -12,33 +12,78 @@ let client: Client;
 
 let logger: Logger = new Logger('daily', WarningLevel.Warning);
 
-export function daily_init(clientInstance: Client) {
+interface Job {
+	init: (clientInstance: Client) => void;
+	schedule: string;
+	callback: () => void;
+	name: string;
+	options: JobOptions;
+}
+
+class JobOptions {
+	enabled: boolean = true;
+	runOnStart: boolean = false;
+}
+
+function make_job(
+	schedule: string,
+	init: (clientInstance: Client) => void,
+	callback: () => void,
+	name: string,
+	options?: JobOptions,
+): Job {
+	return {
+		schedule: schedule,
+		init: init,
+		callback: callback,
+		name: name,
+		options: options ?? ({} as JobOptions),
+	};
+}
+
+function run_job(job: Job) {
+	try {
+		logger.log('running job ' + job.name, WarningLevel.Notice);
+		job.callback();
+	} catch (err: any) {
+		logger.log(
+			'Caught exception running job ' + job.name + ': ' + (err as Error).name,
+			WarningLevel.Error,
+		);
+		logger.log('Error details: ' + (err as Error).message, WarningLevel.Error);
+		logger.log((err as Error).stack, WarningLevel.Error);
+	}
+}
+
+// https://crontab.guru/#*_*_*_*_*
+// useful resource for writing cron schedules
+const jobs: Job[] = [
+	make_job('05 12 * * *', init_xkcd, check_xkcd, 'XKCD'),
+	make_job('30 8,10,18 * * *', init_normie, check_normie, 'normie'),
+	make_job('35 14 * * *', init_smbc, check_smbc, 'SMBC'),
+];
+
+let activeJobs: cron.CronJob[] = [];
+
+export async function daily_init(clientInstance: Client) {
 	client = clientInstance;
 
-	init_xkcd(client);
-	init_normie(client);
-	init_smbc(client);
+	jobs.forEach(job => {
+		logger.log('initializing ' + job.name);
+		job.init(client);
 
-	// set up scheduling
-	// https://crontab.guru/#*_*_*_*_*
-	// useful resource for writing cron tags
+		if (job.options.enabled) {
+			activeJobs.push(
+				new cron.CronJob(job.schedule, () => {
+					run_job(job);
+				}),
+			);
+		}
 
-	let xkcd = new cron.CronJob('05 12 * * *', () => {
-		logger.log('running XKCD job', WarningLevel.Notice);
-		check_xkcd();
+		if (job.options.runOnStart) {
+			run_job(job);
+		}
 	});
 
-	let normie = new cron.CronJob('30 8,10,18 * * *', () => {
-		logger.log('running normie job', WarningLevel.Notice);
-		check_normie();
-	});
-
-	let smbc = new cron.CronJob('35 14 * * *', () => {
-		logger.log('running SMBC job', WarningLevel.Notice);
-		check_smbc();
-	});
-
-	xkcd.start();
-	normie.start();
-	smbc.start();
+	activeJobs.forEach(job => job.start());
 }

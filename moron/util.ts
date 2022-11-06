@@ -242,6 +242,10 @@ export function readCacheFile(filename: string): Buffer | undefined {
 	}
 }
 
+export function readCacheFileAsJson(filename: string) {
+	let buf = readCacheFile(filename);
+}
+
 ///
 /// RSS parsing convenience
 ///

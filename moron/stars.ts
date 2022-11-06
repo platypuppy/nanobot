@@ -7,6 +7,7 @@ import {
 	Emoji,
 	GuildEmoji,
 	Message,
+	MessageReaction,
 	MessageType,
 	PartialMessage,
 	ReactionEmoji,
@@ -14,7 +15,7 @@ import {
 } from 'discord.js';
 const { iconicMemes, serverLog } = require('../groche-channels.json');
 import * as fs from 'fs';
-import { pinnedMessagesLoaded } from '..';
+import { registerReactionListener } from '..';
 import { Logger, WarningLevel } from './logger';
 const {
 	StarDBFolder,
@@ -38,7 +39,14 @@ let logger: Logger = new Logger('stars', WarningLevel.Warning);
 let pinnedMessages: string[] = [];
 const pinnedMessagesFile: string = StarDBFolder + StarDBFile;
 
-export async function stars_initialize() {
+let pinnedMessagesLoaded: boolean = false;
+
+let clientInstance: Client;
+
+export async function stars_init(client: Client) {
+	clientInstance = client;
+	registerReactionListener(stars_onStarAdded);
+
 	if (!devMode) {
 		// prod-only code
 		logger.log('Reading pinned message archive...', WarningLevel.Notice);
@@ -69,6 +77,8 @@ export async function stars_initialize() {
 	} else {
 		logger.log('started in dev mode', WarningLevel.Warning);
 	}
+
+	pinnedMessagesLoaded = true;
 }
 
 async function addPin(messageId: string): Promise<boolean> {
@@ -144,15 +154,15 @@ async function pinMessage(
 	(starChannel as TextChannel).send({ embeds: additionalAttachments });
 }
 
-export function stars_onStarAdded(
-	client: Client<boolean>,
-	reactType: GuildEmoji | ReactionEmoji,
-	post: Message<boolean> | PartialMessage,
-	count: number | null,
-) {
-	if (count !== null) {
-		if (devMode || count >= ReactsToTrigger) {
-			pinMessage(client, reactType, post, count);
+async function stars_onStarAdded(reaction: MessageReaction) {
+	if (reaction.count !== null) {
+		if (devMode || reaction.count >= ReactsToTrigger) {
+			pinMessage(
+				clientInstance,
+				reaction.emoji,
+				reaction.message,
+				reaction.count,
+			);
 		}
 	}
 }

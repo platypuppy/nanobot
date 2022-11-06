@@ -1,3 +1,5 @@
+import { forceTraceMode } from '..';
+
 const warningLevels = ['', '[Info] ', '[Warning] ', '[ERROR] '];
 
 export enum WarningLevel {
@@ -21,8 +23,9 @@ export class Logger {
 		if (!warningLevel) warningLevel = 0;
 
 		if (
-			warningLevel >= this.minWarningLevel &&
-			warningLevel < WarningLevel.Disabled
+			forceTraceMode ||
+			(warningLevel >= this.minWarningLevel &&
+				warningLevel < WarningLevel.Disabled)
 		) {
 			const now = new Date();
 			console.log(

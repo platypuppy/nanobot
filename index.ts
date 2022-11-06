@@ -1,19 +1,24 @@
-import { ActivityType, Client, GatewayIntentBits, Partials } from 'discord.js';
+import {
+	ActivityType,
+	CacheType,
+	Client,
+	GatewayIntentBits,
+	Interaction,
+	Message,
+	MessageReaction,
+	Partials,
+} from 'discord.js';
 const { token } = require('./token.json');
-const {
-	grocheCentral,
-	grocheBots,
-	grocheGaming,
-	comfyposting,
-	worstImagesEver,
-	music,
-	originalContent,
-} = require('./groche-channels.json');
-import { stars_initialize, stars_onStarAdded } from './moron/stars';
-import { chatty_init, chatty_onMessageSend } from './moron/chatty';
-import { reactor_init, reactor_onMessageSend } from './moron/reactor';
 import { Logger, WarningLevel } from './moron/logger';
+import { chatty_init } from './moron/chatty';
+import { reactor_init } from './moron/reactor';
 import { daily_init } from './moron/daily';
+import { stars_init } from './moron/stars';
+
+export const forceTraceMode: boolean = true;
+
+let logger: Logger = new Logger('core', WarningLevel.Notice);
+logger.log('Bot starting...');
 
 const client = new Client({
 	intents: [
@@ -34,46 +39,91 @@ const client = new Client({
 	],
 });
 
-let logger: Logger = new Logger('core', WarningLevel.Notice);
+///
+/// init
+///
 
-client.once('ready', () => {
+type InitCallback = (client: Client) => Promise<void>;
+
+let initCallbacks: InitCallback[] = [
+	stars_init,
+	reactor_init,
+	chatty_init,
+	daily_init,
+];
+
+client.once('ready', async () => {
 	// init modules
-
-	reactor_init(client);
-	chatty_init(client);
-	daily_init(client);
-
+	await Promise.allSettled(initCallbacks.map(cb => cb(client)));
 	// all done
 
 	logger.log('Bot started');
 });
 
+///
+/// commands
+///
+
+type InteractionCallback = (
+	message: Interaction<CacheType>,
+) => Promise<boolean>;
+
+let interactionCallbacks: InteractionCallback[] = [];
+
+// return true in your listener if you handled the command successfully
+// this ensures multiple different systems don't end up responding to the same command
+export function registerInteractionListener(listener: InteractionCallback) {
+	interactionCallbacks.push(listener);
+}
+
 client.on('interactionCreate', async interaction => {
-	if (!interaction.isChatInputCommand()) return;
-	const { commandName } = interaction;
+	interactionCallbacks.every(cb => !cb(interaction));
 });
+
+///
+/// messages
+///
+
+type MessageCallback = (message: Message<boolean>) => Promise<void>;
+
+let messageCallbacks: MessageCallback[] = [];
+
+export function registerMessageListener(listener: MessageCallback) {
+	messageCallbacks.push(listener);
+}
 
 client.on('messageCreate', async msg => {
 	if (!client.user || msg.author.id == client.user.id) return;
 
 	if (msg.partial) {
-		await msg.fetch();
+		msg = await msg.fetch();
 	}
 
-	chatty_onMessageSend(msg);
-	reactor_onMessageSend(msg);
+	messageCallbacks.forEach(cb => cb(msg));
 });
+
+///
+/// reactions
+///
+
+type ReactionCallback = (reaction: MessageReaction) => Promise<void>;
+
+let reactionCallbacks: ReactionCallback[] = [];
+
+export function registerReactionListener(listener: ReactionCallback) {
+	reactionCallbacks.push(listener);
+}
 
 client.on('messageReactionAdd', async react => {
 	if (react.me) return;
 
 	if (react.partial) {
-		await react.fetch();
+		react = await react.fetch();
 	}
 
-	stars_onStarAdded(client, react.emoji, react.message, react.count);
+	reactionCallbacks.forEach(cb => cb(react as MessageReaction));
 });
 
-export let pinnedMessagesLoaded = stars_initialize();
+// get everything started
 
 client.login(token);

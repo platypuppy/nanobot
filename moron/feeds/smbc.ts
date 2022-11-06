@@ -88,10 +88,18 @@ export async function check_smbc() {
 			return;
 		}
 
-		lastComic = JSON.parse(cache.toString()).lastComic;
+		try {
+			lastComic = JSON.parse(cache.toString()).lastComic;
 
-		if (todaysComic.guid == lastComic) {
-			return;
+			if (todaysComic.guid == lastComic) {
+				return;
+			}
+		} catch (err: any) {
+			if (err as SyntaxError) {
+				// ignore, it will be written back
+			} else {
+				throw err;
+			}
 		}
 
 		lastComic = todaysComic.guid;

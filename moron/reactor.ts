@@ -1,4 +1,5 @@
 import { Client, Message } from 'discord.js';
+import { registerMessageListener } from '..';
 import { Logger, WarningLevel } from './logger';
 import { doesMatch, emoteNameToId, getEmote } from './util';
 const { serverLog } = require('../groche-channels.json');
@@ -33,8 +34,10 @@ let client: Client;
 
 let logger: Logger = new Logger('reactor', WarningLevel.Warning);
 
-export function reactor_init(clientInstance: Client) {
+export async function reactor_init(clientInstance: Client) {
 	client = clientInstance;
+
+	registerMessageListener(reactor_onMessageSend);
 }
 
 async function reactWithEmoji(msg: Message, emojiName: string) {
@@ -59,6 +62,9 @@ function emojiBuzzword(
 			ignorePunctuation: ignoreSymb,
 		})
 	) {
+		logger.log(
+			'reacting to message with ' + emoji + ' because it contains ' + word,
+		);
 		reactWithEmoji(msg, emoji);
 		return true;
 	}
