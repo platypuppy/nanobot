@@ -859,5 +859,17 @@ export async function chatty_onMessageSend(msg: Message) {
 		)
 	) {
 		return;
+	} else if (msg.content.length > 140) {
+		basicReplyFunction([
+			'thats a lotta words',
+			'tldr',
+			'leftist memes be like',
+			'https://tenor.com/view/he-is-speaking-guy-explaining-with-a-whiteboard-some-guy-explaining-gif-19593300',
+			'can you just give me the executive summary im lost',
+			'you should submit this to the new york times',
+			'can you repeat that i wasnt paying attention',
+			'sorry that happened',
+			'happy for u',
+		])(msg);
 	}
 }

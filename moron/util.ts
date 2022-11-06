@@ -242,8 +242,31 @@ export function readCacheFile(filename: string): Buffer | undefined {
 	}
 }
 
-export function readCacheFileAsJson(filename: string) {
+// same as readCacheFile but it also parses the result into a JSON object
+// returns undefined if the file could not be created or was empty
+export function readCacheFileAsJson(filename: string): any {
 	let buf = readCacheFile(filename);
+	if (!buf) {
+		return undefined;
+	} else {
+		if (buf.length == 0) return undefined;
+
+		try {
+			return JSON.parse(buf.toString());
+		} catch (err: any) {
+			if (err as SyntaxError) {
+				// return invalid JSON as undefined
+				logger.log(
+					'Corrupt or invalid JSON loaded from ' + filename,
+					WarningLevel.Warning,
+				);
+				return undefined;
+			} else {
+				logger.log(err, WarningLevel.Error);
+				return undefined;
+			}
+		}
+	}
 }
 
 ///

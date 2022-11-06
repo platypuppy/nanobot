@@ -37,7 +37,7 @@ function make_job(
 		init: init,
 		callback: callback,
 		name: name,
-		options: options ?? ({} as JobOptions),
+		options: options ?? new JobOptions(),
 	};
 }
 
@@ -58,8 +58,8 @@ function run_job(job: Job) {
 // https://crontab.guru/#*_*_*_*_*
 // useful resource for writing cron schedules
 const jobs: Job[] = [
-	make_job('05 12 * * *', init_xkcd, check_xkcd, 'XKCD'),
-	make_job('30 8,10,18 * * *', init_normie, check_normie, 'normie'),
+	make_job('25 11 * * *', init_xkcd, check_xkcd, 'XKCD'),
+	make_job('40 7,9,18,23 * * *', init_normie, check_normie, 'normie'),
 	make_job('35 14 * * *', init_smbc, check_smbc, 'SMBC'),
 ];
 
@@ -86,4 +86,6 @@ export async function daily_init(clientInstance: Client) {
 	});
 
 	activeJobs.forEach(job => job.start());
+
+	logger.log('finished starting with ' + activeJobs.length + ' active jobs');
 }

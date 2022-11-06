@@ -34,20 +34,25 @@ export async function check_normie() {
 		logger.log('Normie was not initialized!', WarningLevel.Error);
 	}
 
-	request.get(
-		{
-			url: apiUrl,
-			json: true,
-			headers: { 'User-Agent': 'request' },
-		},
-		(err, res, data) => {
-			if (err) {
-				logger.log(err, WarningLevel.Error);
-			} else if (res.statusCode !== 200) {
-				logger.log(res.statusMessage, WarningLevel.Warning);
-			} else {
-				postReceived(data);
-			}
-		},
-	);
+	let goAgain = true;
+	while (goAgain) {
+		request.get(
+			{
+				url: apiUrl,
+				json: true,
+				headers: { 'User-Agent': 'request' },
+			},
+			(err, res, data) => {
+				if (err) {
+					logger.log(err, WarningLevel.Error);
+				} else if (res.statusCode !== 200) {
+					logger.log(res.statusMessage, WarningLevel.Warning);
+				} else {
+					postReceived(data);
+				}
+			},
+		);
+
+		goAgain = Math.random() > 0.9;
+	}
 }
