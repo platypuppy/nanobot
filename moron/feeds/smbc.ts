@@ -7,6 +7,7 @@ import {
 	Error,
 	getSingleElement,
 	readCacheFile,
+	readCacheFileAsJson,
 	writeCacheFile,
 } from '../util';
 
@@ -79,27 +80,16 @@ export async function check_smbc() {
 	if (!devMode) {
 		let lastComic: string = '';
 
-		let cache = readCacheFile('smbc.json');
+		let cache = readCacheFileAsJson('smbc.json');
+
 		if (!cache) {
 			logger.log(
-				'Failed to load cache data for some reason!',
-				WarningLevel.Error,
+				'Failed to load cache data for some reason! New cache will be created',
+				WarningLevel.Notice,
 			);
-			return;
-		}
-
-		try {
-			lastComic = JSON.parse(cache.toString()).lastComic;
-
-			if (todaysComic.guid == lastComic) {
-				return;
-			}
-		} catch (err: any) {
-			if (err as SyntaxError) {
-				// ignore, it will be written back
-			} else {
-				throw err;
-			}
+		} else {
+			lastComic = cache.lastComic;
+			if (lastComic == todaysComic.guid) return;
 		}
 
 		lastComic = todaysComic.guid;
