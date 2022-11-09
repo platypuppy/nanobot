@@ -56,7 +56,19 @@ let initCallbacks: InitCallback[] = [
 
 client.once('ready', async () => {
 	// init modules
-	await Promise.allSettled(initCallbacks.map(cb => cb(client)));
+	await Promise.allSettled(
+		initCallbacks.map(cb => {
+			try {
+				cb(client);
+			} catch (err: any) {
+				logger.log(
+					'Exception thrown when initializing module',
+					WarningLevel.Error,
+				);
+				logger.log(err, WarningLevel.Error);
+			}
+		}),
+	);
 	// all done
 
 	logger.log('Bot started');
@@ -101,7 +113,14 @@ client.on('messageCreate', async msg => {
 		msg = await msg.fetch();
 	}
 
-	messageCallbacks.forEach(cb => cb(msg));
+	messageCallbacks.forEach(cb => {
+		try {
+			cb(msg);
+		} catch (err: any) {
+			logger.log('Exception thrown handling message', WarningLevel.Error);
+			logger.log(err, WarningLevel.Error);
+		}
+	});
 });
 
 ///
@@ -123,7 +142,14 @@ client.on('messageReactionAdd', async react => {
 		react = await react.fetch();
 	}
 
-	reactionCallbacks.forEach(cb => cb(react as MessageReaction));
+	reactionCallbacks.forEach(cb => {
+		try {
+			cb(react as MessageReaction);
+		} catch (err: any) {
+			logger.log('Exception thrown handling reaction', WarningLevel.Error);
+			logger.log(err, WarningLevel.Error);
+		}
+	});
 });
 
 // get everything started
