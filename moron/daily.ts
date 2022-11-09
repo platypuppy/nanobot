@@ -46,12 +46,8 @@ function run_job(job: Job) {
 		logger.log('running job ' + job.name, WarningLevel.Notice);
 		job.callback();
 	} catch (err: any) {
-		logger.log(
-			'Caught exception running job ' + job.name + ': ' + (err as Error).name,
-			WarningLevel.Error,
-		);
-		logger.log('Error details: ' + (err as Error).message, WarningLevel.Error);
-		logger.log((err as Error).stack, WarningLevel.Error);
+		logger.log('Caught exception running job ' + job.name, WarningLevel.Error);
+		logger.log(err, WarningLevel.Error);
 	}
 }
 

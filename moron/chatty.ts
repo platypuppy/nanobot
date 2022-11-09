@@ -262,7 +262,11 @@ export async function chatty_onMessageSend(msg: Message) {
 					topic +
 					', sorry',
 			],
-			stringSet(['love', 'adore', 'enjoy', 'appreciate', 'like'], true, true),
+			stringSet(
+				['love', 'liked', 'adore', 'enjoy', 'appreciate', 'i like'],
+				true,
+				true,
+			),
 			[],
 		)
 	) {

@@ -3,7 +3,7 @@ import { registerMessageListener } from '..';
 import { Logger, WarningLevel } from './logger';
 import { doesMatch, emoteNameToId, getEmote } from './util';
 const { serverLog } = require('../groche-channels.json');
-const {
+import {
 	emoteHmmm,
 	emoteJii,
 	emoteSethCP,
@@ -26,7 +26,7 @@ const {
 	emoteHeykas,
 	emoteHuh,
 	emoteShijimaDead,
-} = require('../groche-emotes.json');
+} from '../groche-emotes.json';
 
 const devMode = false;
 

@@ -8,12 +8,13 @@ import {
 	MessageReaction,
 	Partials,
 } from 'discord.js';
-const { token } = require('./token.json');
+import { token } from './tokens.json';
 import { Logger, WarningLevel } from './moron/logger';
 import { chatty_init } from './moron/chatty';
 import { reactor_init } from './moron/reactor';
 import { daily_init } from './moron/daily';
 import { stars_init } from './moron/stars';
+import { twitfix_init } from './moron/twitfix';
 
 export const forceTraceMode: boolean = true;
 
@@ -50,6 +51,7 @@ let initCallbacks: InitCallback[] = [
 	reactor_init,
 	chatty_init,
 	daily_init,
+	twitfix_init,
 ];
 
 client.once('ready', async () => {
