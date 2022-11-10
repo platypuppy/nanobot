@@ -48,11 +48,13 @@ export async function check_normie() {
 				} else if (res.statusCode !== 200) {
 					logger.log(res.statusMessage, WarningLevel.Warning);
 				} else {
+					logger.log('posting meme');
 					postReceived(data);
 				}
 			},
 		);
-
+		// pause to avoid double-posting
+		await new Promise(resolve => setTimeout(resolve, 3000));
 		goAgain = Math.random() > 0.9;
 	}
 }
