@@ -1,4 +1,5 @@
 import {
+	ChatInputCommandInteraction,
 	Client as DiscordClient,
 	EmbedBuilder,
 	Interaction,
@@ -42,9 +43,73 @@ function updateCacheFile() {
 	writeCacheFile('twitfollow.json', Buffer.from(JSON.stringify(userCache)));
 }
 
-export async function followUserCommand(interaction: Interaction) {}
+export async function followUserCommand(
+	interaction: ChatInputCommandInteraction,
+) {
+	const userArg = interaction.options.get('user');
+	const targetChannelArg = interaction.options.get('target_channel');
+	const vettingChannelArg = interaction.options.get('vetting_channel', false);
 
-export async function unFollowUserCommand(interaction: Interaction) {}
+	if (!userArg?.value) {
+		interaction.reply("don't know what user that is chief");
+		return;
+	}
+	if (!targetChannelArg?.value) {
+		interaction.reply("don't know what channel that is chief");
+		return;
+	}
+
+	let username = userArg.value.toString();
+	let targetChannel = targetChannelArg.value.toString();
+	let vettingChannel = vettingChannelArg?.value?.toString() ?? undefined;
+
+	if (username.startsWith('@')) {
+		let twUser = await twitterClient.v2.userByUsername(username.substring(1), {
+			'user.fields': ['id'],
+		});
+
+		if (twUser.errors) {
+			interaction.reply(
+				'sorry bud i have no idea who this ' + username + ' guy is',
+			);
+			return;
+		} else {
+			username = twUser.data.id;
+		}
+	}
+	followUser(username, '0', targetChannel, vettingChannel);
+	interaction.reply('I will follow this fucker until the day i die');
+}
+
+export async function unFollowUserCommand(
+	interaction: ChatInputCommandInteraction,
+) {
+	const userArg = interaction.options.get('user');
+
+	if (!userArg?.value) {
+		interaction.reply('who tf is that');
+		return;
+	}
+
+	let username = userArg.value.toString();
+
+	if (username.startsWith('@')) {
+		let twUser = await twitterClient.v2.userByUsername(username.substring(1), {
+			'user.fields': ['id'],
+		});
+
+		if (twUser.errors) {
+			interaction.reply(
+				'sorry bud i have no idea who this ' + username + ' guy is',
+			);
+			return;
+		} else {
+			username = twUser.data.id;
+		}
+	}
+	unfollowUser(username);
+	interaction.reply('the chase is off');
+}
 
 function followUser(
 	userId: string,
