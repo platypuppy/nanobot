@@ -1,17 +1,15 @@
-import { Client as DiscordClient, EmbedBuilder, TextChannel } from 'discord.js';
-import { Logger, WarningLevel } from '../logger';
-
 import {
-	serverLog,
-	comfyposting,
-	comfypostingFeed,
-} from '../../groche-channels.json';
+	Client as DiscordClient,
+	EmbedBuilder,
+	Interaction,
+	TextChannel,
+} from 'discord.js';
+import { Logger, WarningLevel } from '../logger';
 
 import {
 	TwitterApi,
 	TwitterApiReadOnly,
 	TweetUserTimelineV2Paginator,
-	TweetV2HomeTimelineResult,
 } from 'twitter-api-v2';
 
 import { twitterBearerToken } from '../../tokens.json';
@@ -44,6 +42,10 @@ function updateCacheFile() {
 	writeCacheFile('twitfollow.json', Buffer.from(JSON.stringify(userCache)));
 }
 
+export async function followUserCommand(interaction: Interaction) {}
+
+export async function unFollowUserCommand(interaction: Interaction) {}
+
 function followUser(
 	userId: string,
 	lastPost: string,
@@ -56,6 +58,12 @@ function followUser(
 		channelTarget: channelTarget,
 		vettingChannel: vettingChannel,
 	};
+	updateCacheFile();
+}
+
+function unfollowUser(userId: string) {
+	if (!userCache.hasOwnProperty(userId)) return;
+	delete userCache[userId];
 	updateCacheFile();
 }
 
@@ -74,8 +82,6 @@ export async function init_twitfollow(clientInstance: DiscordClient) {
 			WarningLevel.Warning,
 		);
 	}
-
-	followUser('16298441', '0', '361329886356439051');
 
 	logger.log('Initialized twitfollow');
 }

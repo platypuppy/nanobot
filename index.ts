@@ -2,11 +2,13 @@ import {
 	ActivityType,
 	CacheType,
 	Client,
+	Collection,
 	GatewayIntentBits,
 	Interaction,
 	Message,
 	MessageReaction,
 	Partials,
+	SlashCommandBuilder,
 } from 'discord.js';
 import { token } from './tokens.json';
 import { Logger, WarningLevel } from './moron/logger';
@@ -16,7 +18,18 @@ import { daily_init } from './moron/daily';
 import { stars_init } from './moron/stars';
 import { twitfix_init } from './moron/twitfix';
 
-export const forceTraceMode: boolean = true;
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+
+export class ExtendedClient extends Client {
+	commands: Collection<
+		string,
+		{
+			data: SlashCommandBuilder;
+			execute: (interaction: Interaction) => Promise<void>;
+		}
+	> = new Collection();
+}
 
 let logger: Logger = new Logger('core', WarningLevel.Notice);
 logger.log('Bot starting...');
@@ -38,11 +51,57 @@ const client = new Client({
 		Partials.Channel,
 		Partials.Reaction,
 	],
-});
+}) as ExtendedClient;
+
+client.commands = new Collection();
 
 ///
 /// init
 ///
+
+// load commands
+const baseCommandPath = path.join(__dirname, 'moron', 'commands');
+
+function loadCommands(subdir: string) {
+	const commandsPath = path.join(baseCommandPath, subdir);
+	const commandFiles = fs
+		.readdirSync(commandsPath)
+		.filter(file => file.endsWith('.js'));
+
+	logger.log(commandFiles.length.toString());
+}
+
+let commandFiles: string[] = [];
+
+function getAllCommands(directory: string) {
+	fs.readdirSync(directory).forEach(file => {
+		const abs = path.join(directory, file);
+		if (fs.statSync(abs).isDirectory()) {
+			getAllCommands(abs);
+		} else if (abs.endsWith('.js')) {
+			commandFiles.push(abs);
+		}
+		return;
+	});
+}
+
+function loadAllCommands() {
+	getAllCommands('moron/commands/');
+
+	for (const file of commandFiles) {
+		const command = require(__dirname + '/' + file);
+
+		if ('data' in command && 'execute' in command) {
+			client.commands.set(command.data.name, command);
+		} else {
+			logger.log('Unrecognized command in file ' + file, WarningLevel.Warning);
+		}
+	}
+}
+
+loadAllCommands();
+
+// init modules
 
 type InitCallback = (client: Client) => Promise<void>;
 
@@ -92,6 +151,27 @@ export function registerInteractionListener(listener: InteractionCallback) {
 
 client.on('interactionCreate', async interaction => {
 	interactionCallbacks.every(cb => !cb(interaction));
+
+	if (!interaction.isChatInputCommand()) return;
+
+	const command = client.commands.get(interaction.commandName);
+
+	if (!command) {
+		logger.log(
+			'Unrecognized command ' + interaction.commandName,
+			WarningLevel.Error,
+		);
+		return;
+	}
+	try {
+		await command.execute(interaction);
+	} catch (err: any) {
+		logger.log(err, WarningLevel.Error);
+		await interaction.reply({
+			content: 'There was an error while executing that command.',
+			ephemeral: true,
+		});
+	}
 });
 
 ///

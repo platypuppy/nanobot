@@ -1,8 +1,8 @@
-import { forceTraceMode } from '..';
+export const forceTraceMode: boolean = true;
 
 const warningLevels = ['', '[Info] ', '[Warning] ', '[ERROR] '];
 
-export enum WarningLevel {
+export const enum WarningLevel {
 	Notice = 0,
 	Info = 1,
 	Warning = 2,
