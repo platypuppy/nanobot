@@ -2,7 +2,18 @@ import * as fs from 'fs';
 import * as settings from '../config/general.json';
 import { Logger, WarningLevel } from './logger';
 import HtmlParser, { HTMLElement } from 'node-html-parser';
-
+import {
+	Channel,
+	EmbedBuilder,
+	Guild,
+	GuildEmoji,
+	TextBasedChannel,
+	VoiceBasedChannel,
+	VoiceChannel,
+} from 'discord.js';
+import isUrl from 'is-url';
+import { components } from 'twitter-api-sdk/dist/gen/openapi-types';
+import { TweetV2PaginableTimelineResult } from 'twitter-api-v2';
 ///
 /// set up logger for util functions
 ///
@@ -12,15 +23,6 @@ const logger: Logger = new Logger('utils', WarningLevel.Warning);
 ///
 /// error override interface so we can get an actual error code
 ///
-
-import {
-	Channel,
-	Guild,
-	GuildEmoji,
-	TextBasedChannel,
-	VoiceBasedChannel,
-	VoiceChannel,
-} from 'discord.js';
 
 //i shouldn't have to do this
 export declare interface Error {
@@ -294,4 +296,187 @@ export function getSingleElement(
 		return undefined;
 	}
 	return elements[0];
+}
+
+///
+/// Other web utils
+///
+
+// returns true if `text` is a link for the given domain (e.g. "discordapp.com")
+export function isUrlDomain(text: string, domain: string): boolean {
+	if (isUrl(text)) {
+		const url = new URL(text);
+		if (url.hostname == domain) return true;
+		return false;
+	}
+	return false;
+}
+
+///
+/// Twitter API
+///
+
+// manually specify official twitter api interface because the TS library doesn't have it for some reason
+export class User {
+	name: string = 'unknown'; // user's display name
+	handle: string = ''; // user's @handle
+	profilePic: string = ''; // link to user's profile image
+}
+
+export class Tweet {
+	author: User = new User();
+	tweetId: string = '0';
+	textContent: string = '';
+	creationDate: Date = new Date();
+
+	embedVideos: string[] = []; // list of links to videos contained in tweet
+	embedImages: string[] = []; // list of links to images contained in tweet
+
+	postUrl: string = 'about:blank'; // link to the post itself (not empty by default for embed convenience)
+}
+
+export interface TweetMediaVariant {
+	bit_rate?: number;
+	content_type: string;
+	url: string;
+}
+export interface TweetMediaItem {
+	//public_metrics: TweetPublicMetrics
+	type: string;
+	media_key: string;
+
+	variants?: TweetMediaVariant[];
+	alt_text?: string;
+	width?: number;
+	height?: number;
+	duration_ms?: number;
+	preview_image_url?: string;
+	url?: string;
+}
+
+// generates a list of embeds (meant to be sent at once) containing the images from a given Tweet
+export function getDiscordEmbedsFromImageTweet(tweet: Tweet) {
+	let imgEmbeds: EmbedBuilder[] = [];
+	tweet.embedImages.forEach(img => {
+		imgEmbeds.push(
+			new EmbedBuilder()
+				.setDescription(tweet.textContent === '' ? null : tweet.textContent)
+				.setAuthor({
+					name: tweet.author.name + '(@' + tweet.author.handle + ')',
+					iconURL: tweet.author.profilePic,
+				})
+				.setImage(img)
+				.setURL(tweet.postUrl)
+				.setTitle('View on Twitter')
+				.setFooter({
+					text: 'Twitter',
+					iconURL: 'https://abs.twimg.com/icons/apple-touch-icon-192x192.png',
+				})
+				.setTimestamp(tweet.creationDate),
+		);
+	});
+
+	return imgEmbeds;
+}
+
+export function twitterTweetsToTweets(
+	tweets: components['schemas']['Tweet'][],
+	// postURLs: string[],
+	includes: components['schemas']['Expansions'] | undefined,
+): Tweet[] {
+	let builtTweets: Tweet[] = [];
+
+	tweets.forEach(tweet => {
+		let newTweet = new Tweet();
+
+		// post ID is straightforward
+		newTweet.tweetId = tweet.id;
+
+		// filter out possible t.co link in tweet text
+		newTweet.textContent = tweet.text
+			.split(' ')
+			.map(word => (isUrlDomain(word, 't.co') ? '' : word))
+			.filter(e => e.length > 0)
+			.join(' ')
+			.split('\n')
+			.map(word => (isUrlDomain(word, 't.co') ? '' : word))
+			.filter(e => e.length > 0)
+			.join('\n')
+			.trim();
+
+		// set creation date if known
+		if (tweet.created_at) {
+			newTweet.creationDate = new Date(tweet.created_at);
+		}
+
+		// add media embed URLs
+		if (includes) {
+			if (includes.media) {
+				if (tweet.attachments) {
+					// attempt to match attachments from includes to tweet
+					tweet.attachments.media_keys?.forEach(key => {
+						let media = includes.media?.find(
+							media => media.media_key == key,
+						) as TweetMediaItem;
+						if (media) {
+							if (media.type === 'video') {
+								// find the video variant with the highest bitrate
+								if (media.variants) {
+									let curBitRate = 0;
+									let curUrl = '';
+									media.variants.forEach(variant => {
+										if (variant.bit_rate) {
+											if (variant.bit_rate > curBitRate) {
+												curUrl = variant.url;
+												curBitRate = variant.bit_rate;
+											}
+										}
+									});
+
+									if (curUrl !== '') {
+										const extraParamsLoc = curUrl.lastIndexOf('?');
+										newTweet.embedVideos.push(
+											extraParamsLoc === -1
+												? curUrl
+												: curUrl.substring(0, extraParamsLoc),
+										);
+									}
+								}
+							} else if (media.type === 'photo') {
+								if (media.url) {
+									newTweet.embedImages.push(media.url);
+								}
+							} else {
+								logger.log(
+									'unknown media type: ' + media.type,
+									WarningLevel.Warning,
+								);
+							}
+						}
+					});
+				}
+			}
+
+			// fill in author info
+			if (includes.users) {
+				let userObj = includes.users.find(user => user.id === tweet.author_id);
+				if (userObj) {
+					newTweet.author.profilePic = userObj.profile_image_url ?? '';
+					newTweet.author.handle = userObj.username;
+					newTweet.author.name = userObj.name;
+				}
+			}
+		}
+
+		// fill in post URL
+		newTweet.postUrl =
+			'https://twitter.com/' +
+			(newTweet.author.handle === '' ? 'twitter' : newTweet.author.handle) +
+			'/status/' +
+			tweet.id;
+
+		builtTweets.push(newTweet);
+	});
+
+	return builtTweets;
 }

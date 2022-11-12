@@ -5,6 +5,7 @@ import { check_xkcd, init_xkcd } from './feeds/xkcd';
 import * as cron from 'cron';
 import { check_normie, init_normie } from './feeds/normie';
 import { check_smbc, init_smbc } from './feeds/smbc';
+import { check_twitfollow, init_twitfollow } from './feeds/twitfollow';
 
 const devMode = false;
 
@@ -15,7 +16,7 @@ let logger: Logger = new Logger('daily', WarningLevel.Warning);
 interface Job {
 	init: (clientInstance: Client) => void;
 	schedule: string;
-	callback: () => void;
+	callback: () => Promise<void>;
 	name: string;
 	options: JobOptions;
 }
@@ -28,7 +29,7 @@ class JobOptions {
 function make_job(
 	schedule: string,
 	init: (clientInstance: Client) => void,
-	callback: () => void,
+	callback: () => Promise<void>,
 	name: string,
 	options?: JobOptions,
 ): Job {
@@ -57,6 +58,7 @@ const jobs: Job[] = [
 	make_job('25 11 * * *', init_xkcd, check_xkcd, 'XKCD'),
 	make_job('40 7,9,18,23 * * *', init_normie, check_normie, 'normie'),
 	make_job('35 14 * * *', init_smbc, check_smbc, 'SMBC'),
+	make_job('* * * * *', init_twitfollow, check_twitfollow, 'Twitfollow'),
 ];
 
 let activeJobs: cron.CronJob[] = [];
@@ -70,7 +72,7 @@ export async function daily_init(clientInstance: Client) {
 
 		if (job.options.enabled) {
 			activeJobs.push(
-				new cron.CronJob(job.schedule, () => {
+				new cron.CronJob(job.schedule, async () => {
 					run_job(job);
 				}),
 			);

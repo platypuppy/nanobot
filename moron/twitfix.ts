@@ -11,6 +11,7 @@ import { twitterBearerToken } from '../tokens.json';
 import { Logger, WarningLevel } from './logger';
 import { registerMessageListener } from '..';
 import isUrl from 'is-url';
+import { isUrlDomain, Tweet, twitterTweetsToTweets } from './util';
 
 let discordClient: DiscordClient;
 let twitterClient: TwitterClient;
@@ -26,89 +27,9 @@ export async function twitfix_init(clientInstance: DiscordClient) {
 	logger.log('Initialized twitfix');
 }
 
-export class User {
-	name: string = 'unknown';
-	handle: string = '';
-	profilePic: string = '';
-}
+async function handleTweets(msg: Message, postIds: string[]) {
+	msg.channel.sendTyping();
 
-export class Tweet {
-	author: User = new User();
-	tweetId: string = '0';
-	textContent: string = '';
-	creationDate: Date = new Date();
-
-	embedVideos: string[] = [];
-	embedImages: string[] = [];
-
-	postUrl: string = 'about:blank';
-}
-
-// manually specify official twitter api interface because the TS library doesn't have it for some reason
-interface TweetMediaVariant {
-	bit_rate?: number;
-	content_type: string;
-	url: string;
-}
-
-interface TweetMediaItem {
-	//public_metrics: TweetPublicMetrics
-	type: string;
-	media_key: string;
-
-	variants?: TweetMediaVariant[];
-	alt_text?: string;
-	width?: number;
-	height?: number;
-	duration_ms?: number;
-	preview_image_url?: string;
-	url?: string;
-}
-
-function isUrlDomain(text: string, domain: string): boolean {
-	if (isUrl(text)) {
-		const url = new URL(text);
-		if (url.hostname == domain) return true;
-		return false;
-	}
-	return false;
-}
-
-async function handleVideoEmbed(vidUrl: string, msgRespond: Message) {
-	msgRespond.channel.send({
-		embeds: [new EmbedBuilder().setImage(vidUrl).setTitle('test')],
-	});
-}
-
-function getDiscordEmbedsFromImageTweet(tweet: Tweet) {
-	let imgEmbeds: EmbedBuilder[] = [];
-	tweet.embedImages.forEach(img => {
-		imgEmbeds.push(
-			new EmbedBuilder()
-				.setDescription(tweet.textContent)
-				.setAuthor({
-					name: tweet.author.name + '(@' + tweet.author.handle + ')',
-					iconURL: tweet.author.profilePic,
-				})
-				.setImage(img)
-				.setURL(tweet.postUrl)
-				.setTitle('View on Twitter')
-				.setFooter({
-					text: 'Twitter',
-					iconURL: 'https://abs.twimg.com/icons/apple-touch-icon-192x192.png',
-				})
-				.setTimestamp(tweet.creationDate),
-		);
-	});
-
-	return imgEmbeds;
-}
-
-async function handleTweets(
-	msg: Message,
-	postIds: string[],
-	postURLs: string[],
-) {
 	const { data, includes, errors } = await twitterClient.tweets.findTweetsById({
 		ids: postIds,
 		'tweet.fields': ['attachments', 'author_id', 'created_at'],
@@ -121,7 +42,7 @@ async function handleTweets(
 			'variants',
 			'type',
 		],
-		'user.fields': ['username', 'name', 'profile_image_url', 'verified'],
+		'user.fields': ['username', 'name', 'profile_image_url', 'id'],
 	});
 
 	if (!data) {
@@ -133,96 +54,32 @@ async function handleTweets(
 		return;
 	}
 
-	let builtTweets: Tweet[] = [];
+	let builtTweets = twitterTweetsToTweets(data, includes);
 
-	data.forEach(tweet => {
-		let newTweet = new Tweet();
+	let videoFixes: string[] = [];
 
-		// post ID is straightforward
-		newTweet.tweetId = tweet.id;
-
-		// filter out possible t.co link in tweet text
-		newTweet.textContent = tweet.text
-			.split(' ')
-			.map(word => (isUrlDomain(word, 't.co') ? '' : word))
-			.filter(e => e.length > 0)
-			.join(' ')
-			.split('\n')
-			.map(word => (isUrlDomain(word, 't.co') ? '' : word))
-			.filter(e => e.length > 0)
-			.join('\n')
-			.trim();
-
-		// set creation date if known
-		if (tweet.created_at) {
-			newTweet.creationDate = new Date(tweet.created_at);
-		}
-
-		//
-
-		// add media embed URLs
-		if (includes) {
-			if (includes.media) {
-				if (tweet.attachments) {
-					// attempt to match attachments from includes to tweet
-					tweet.attachments.media_keys?.forEach(key => {
-						let media = includes.media?.find(
-							media => media.media_key == key,
-						) as TweetMediaItem;
-						if (media) {
-							if (media.type == 'video') {
-								// find the video variant with the highest bitrate
-								if (media.variants) {
-									let curBitRate = 0;
-									let curUrl = '';
-									media.variants.forEach(variant => {
-										if (variant.bit_rate) {
-											if (variant.bit_rate > curBitRate) {
-												curUrl = variant.url;
-												curBitRate = variant.bit_rate;
-											}
-										}
-									});
-
-									if (curUrl !== '') {
-										newTweet.embedVideos.push(curUrl);
-									}
-								}
-							} else if (media.type == 'photo') {
-								if (media.url) {
-									newTweet.embedImages.push(media.url);
-								}
-							} else {
-								logger.log(
-									'unknown media type: ' + media.type,
-									WarningLevel.Warning,
-								);
-							}
-						}
-					});
-				}
-			}
-		}
-
-		builtTweets.push(newTweet);
-	});
-
-	builtTweets.forEach(tweet => {
+	builtTweets.forEach(async tweet => {
 		logger.log('-----');
 		logger.log('tweet: ');
 		logger.log('postID: ' + tweet.tweetId);
 		logger.log('message: ' + tweet.textContent);
+		logger.log(
+			'author: ' + tweet.author.name + '(@' + tweet.author.handle + ')',
+		);
+		logger.log('tweet link: ' + tweet.postUrl);
 		tweet.embedVideos.forEach(vid => logger.log(vid));
 		tweet.embedImages.forEach(img => logger.log(img));
 
-		tweet.embedVideos.forEach(vid => handleVideoEmbed(vid, msg));
-
-		//let imgEmbeds = getDiscordEmbedsFromImageTweet(tweet);
-
-		//if (imgEmbeds.length > 0) {
-		// msg.channel.send({ embeds: imgEmbeds });
-		//}
+		if (tweet.embedVideos.length > 0) {
+			videoFixes.push(tweet.postUrl.replace('twitter.com', 'vxtwitter.com'));
+		}
 	});
+
+	if (videoFixes.length > 0) {
+		msg.suppressEmbeds(true);
+
+		videoFixes.forEach(async reply => await msg.channel.send(reply));
+	}
 }
 
 async function onMessageSend(msg: Message) {
@@ -239,7 +96,7 @@ async function onMessageSend(msg: Message) {
 	// first split message into words (URLs can't have spaces or newlines)
 	let words = msg.content.split('\n').join(' ').split(' ');
 
-	let discoveredTweets: string[] = [];
+	let discoveredTweets: { tweetPath: string; tweetLink: string }[] = [];
 
 	words.forEach(word => {
 		// check whether word is a valid URL
@@ -247,30 +104,23 @@ async function onMessageSend(msg: Message) {
 			let parsedUrl = new URL(word);
 			// if it and it's from twitter.com, handle it
 			if (parsedUrl.hostname === 'twitter.com') {
-				discoveredTweets.push(parsedUrl.pathname);
+				discoveredTweets.push({
+					tweetPath: parsedUrl.pathname,
+					tweetLink: word,
+				});
 			}
 		}
 	});
 
 	if (discoveredTweets.length > 0) {
-		handleTweets(
-			msg,
-			[
-				// remove duplicates
-				...new Set(
-					discoveredTweets.map(path => {
-						// extract the post ID from the path
-						return path.substring(path.lastIndexOf('/') + 1);
-					}),
-				),
-			],
-			[
-				...new Set(
-					discoveredTweets.map(path => {
-						return 'https://twitter.com/' + path;
-					}),
-				),
-			],
-		);
+		handleTweets(msg, [
+			// remove duplicates
+			...new Set(
+				discoveredTweets.map(path => {
+					// extract the post ID from the path
+					return path.tweetPath.substring(path.tweetPath.lastIndexOf('/') + 1);
+				}),
+			),
+		]);
 	}
 }

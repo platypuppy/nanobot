@@ -9,6 +9,7 @@
     "request": "^2.88.2",
     "rss-parser": "^3.12.0",
     "twitter-api-sdk": "^1.2.1",
+    "twitter-api-v2": "^1.12.9",
     "utf-8-validate": "^5.0.9"
   },
   "name": "nanobot",
