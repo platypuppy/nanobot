@@ -1,8 +1,14 @@
 import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
 	ChatInputCommandInteraction,
 	Client as DiscordClient,
+	ComponentType,
 	EmbedBuilder,
 	Interaction,
+	Message,
+	SelectMenuBuilder,
 	TextChannel,
 } from 'discord.js';
 import { Logger, WarningLevel } from '../logger';
@@ -63,10 +69,13 @@ export async function followUserCommand(
 	let targetChannel = targetChannelArg.value.toString();
 	let vettingChannel = vettingChannelArg?.value?.toString() ?? undefined;
 
-	if (username.startsWith('@')) {
-		let twUser = await twitterClient.v2.userByUsername(username.substring(1), {
-			'user.fields': ['id'],
-		});
+	if (![...username].every(c => '0123456789'.includes(c))) {
+		let twUser = await twitterClient.v2.userByUsername(
+			username.startsWith('@') ? username.substring(1) : username,
+			{
+				'user.fields': ['id'],
+			},
+		);
 
 		if (twUser.errors) {
 			interaction.reply(
@@ -241,35 +250,40 @@ async function grabPosts(
 	userId: string,
 	settings: FollowSettings,
 ): Promise<Tweet[]> {
-	const rawData = await twitterClient.v2.userTimeline(userId, {
-		exclude: ['replies', 'retweets'],
-		expansions: ['attachments.media_keys', 'author_id'],
-		'media.fields': ['media_key', 'type', 'url', 'variants'],
-		'tweet.fields': ['attachments', 'author_id', 'created_at', 'id', 'text'],
-		'user.fields': ['id', 'name', 'username', 'profile_image_url'],
-		max_results: 5,
-		since_id: settings.lastPost,
-	});
-
-	if (!rawData.data) {
-		rawData.errors?.forEach(e => {
-			logger.log(e.title, WarningLevel.Error);
-			logger.log(e.detail, WarningLevel.Error);
+	try {
+		const rawData = await twitterClient.v2.userTimeline(userId, {
+			exclude: ['replies', 'retweets'],
+			expansions: ['attachments.media_keys', 'author_id'],
+			'media.fields': ['media_key', 'type', 'url', 'variants'],
+			'tweet.fields': ['attachments', 'author_id', 'created_at', 'id', 'text'],
+			'user.fields': ['id', 'name', 'username', 'profile_image_url'],
+			max_results: 5,
+			since_id: settings.lastPost,
 		});
-		logger.log('failed to resolve tweets', WarningLevel.Error);
+
+		if (!rawData.data) {
+			rawData.errors?.forEach(e => {
+				logger.log(e.title, WarningLevel.Error);
+				logger.log(e.detail, WarningLevel.Error);
+			});
+			logger.log('failed to resolve tweets', WarningLevel.Error);
+			return [];
+		}
+
+		if (rawData.data.errors) {
+			rawData.data.errors.forEach(e => {
+				logger.log(e.title, WarningLevel.Error);
+				logger.log(e.detail, WarningLevel.Error);
+			});
+			logger.log('failed to resolve tweets', WarningLevel.Error);
+			return [];
+		}
+
+		return twitterTimelineTweetsToTweets(rawData);
+	} catch (err: any) {
+		logger.log(err, WarningLevel.Error);
 		return [];
 	}
-
-	if (rawData.data.errors) {
-		rawData.data.errors.forEach(e => {
-			logger.log(e.title, WarningLevel.Error);
-			logger.log(e.detail, WarningLevel.Error);
-		});
-		logger.log('failed to resolve tweets', WarningLevel.Error);
-		return [];
-	}
-
-	return twitterTimelineTweetsToTweets(rawData);
 }
 
 async function submitPost(tweet: Tweet, settings: FollowSettings) {
@@ -304,11 +318,82 @@ async function submitPost(tweet: Tweet, settings: FollowSettings) {
 	}
 }
 
+function respondToVetting(
+	msg: Message,
+	tweet: Tweet,
+	settings: FollowSettings,
+) {
+	msg
+		.awaitMessageComponent({ componentType: ComponentType.Button })
+		.then(interaction => {
+			logger.log(interaction.customId);
+			msg.delete();
+			if (interaction.customId.startsWith('accept')) {
+				submitPost(tweet, settings);
+			}
+		});
+}
+
+async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
+	let candidateChannel: TextChannel = discordClient.channels.resolve(
+		settings.vettingChannel!,
+	) as TextChannel;
+
+	const vettingOptions = new ActionRowBuilder<ButtonBuilder>().addComponents(
+		new ButtonBuilder()
+			.setCustomId('accept-' + tweet.tweetId)
+			.setLabel('Accept')
+			.setStyle(ButtonStyle.Primary),
+		new ButtonBuilder()
+			.setCustomId('reject-' + tweet.tweetId)
+			.setLabel('Reject')
+			.setStyle(ButtonStyle.Danger),
+	);
+
+	if (tweet.embedVideos.length > 0) {
+		// video tweet
+		candidateChannel
+			.send({
+				content: tweet.postUrl.replace('twitter.com', 'vxtwitter.com'),
+				components: [vettingOptions],
+			})
+			.then(msg => respondToVetting(msg, tweet, settings));
+	} else if (tweet.embedImages.length > 0) {
+		// image tweet
+		candidateChannel
+			.send({
+				embeds: getDiscordEmbedsFromImageTweet(tweet),
+				components: [vettingOptions],
+			})
+			.then(msg => respondToVetting(msg, tweet, settings));
+	} else {
+		candidateChannel
+			.send({
+				embeds: [
+					new EmbedBuilder()
+						.setDescription(tweet.textContent === '' ? null : tweet.textContent)
+						.setAuthor({
+							name: tweet.author.name + '(@' + tweet.author.handle + ')',
+							iconURL: tweet.author.profilePic,
+						})
+						.setFooter({
+							text: 'Twitter',
+							iconURL:
+								'https://abs.twimg.com/icons/apple-touch-icon-192x192.png',
+						})
+						.setTimestamp(tweet.creationDate),
+				],
+				components: [vettingOptions],
+			})
+			.then(msg => respondToVetting(msg, tweet, settings));
+	}
+}
+
 function submitCandidate(tweet: Tweet, settings: FollowSettings) {
 	if (!settings.vettingChannel) {
 		submitPost(tweet, settings);
 	} else {
-		submitPost(tweet, settings);
+		submitVettingPost(tweet, settings);
 	}
 }
 
