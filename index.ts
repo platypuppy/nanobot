@@ -150,26 +150,34 @@ export function registerInteractionListener(listener: InteractionCallback) {
 }
 
 client.on('interactionCreate', async interaction => {
-	interactionCallbacks.every(cb => !cb(interaction));
+	if (interaction.isChatInputCommand()) {
+		const command = client.commands.get(interaction.commandName);
 
-	if (!interaction.isChatInputCommand()) return;
-
-	const command = client.commands.get(interaction.commandName);
-
-	if (!command) {
-		logger.log(
-			'Unrecognized command ' + interaction.commandName,
-			WarningLevel.Error,
-		);
-		return;
-	}
-	try {
-		await command.execute(interaction);
-	} catch (err: any) {
-		logger.log(err, WarningLevel.Error);
-		await interaction.reply({
-			content: 'There was an error while executing that command.',
-			ephemeral: true,
+		if (!command) {
+			logger.log(
+				'Unrecognized command ' + interaction.commandName,
+				WarningLevel.Error,
+			);
+			return;
+		}
+		try {
+			await command.execute(interaction);
+		} catch (err: any) {
+			logger.log(err, WarningLevel.Error);
+			await interaction.reply({
+				content: 'There was an error while executing that command.',
+				ephemeral: true,
+			});
+		}
+	} else {
+		// fall back to external interaction handlers
+		interactionCallbacks.every(async cb => {
+			try {
+				return !(await cb(interaction));
+			} catch (err: any) {
+				logger.log(err, WarningLevel.Error);
+				return false;
+			}
 		});
 	}
 });

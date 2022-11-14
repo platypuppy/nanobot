@@ -2,12 +2,14 @@ import {
 	ActionRowBuilder,
 	ButtonBuilder,
 	ButtonStyle,
+	CacheType,
 	ChatInputCommandInteraction,
 	Client as DiscordClient,
 	ComponentType,
 	EmbedBuilder,
 	Interaction,
 	Message,
+	MessageComponentInteraction,
 	SelectMenuBuilder,
 	TextChannel,
 } from 'discord.js';
@@ -29,6 +31,7 @@ import {
 	twitterTweetsToTweets,
 	writeCacheFile,
 } from '../util';
+import { registerInteractionListener } from '../..';
 
 let discordClient: DiscordClient;
 let twitterClient: TwitterApiReadOnly;
@@ -157,6 +160,8 @@ export async function init_twitfollow(clientInstance: DiscordClient) {
 		);
 	}
 
+	registerInteractionListener(twitfollow_interactionCreate);
+
 	logger.log('Initialized twitfollow');
 }
 
@@ -215,11 +220,15 @@ function twitterTimelineTweetsToTweets(
 						if (media.url) {
 							newTweet.embedImages.push(media.url);
 						}
+					} else if (media.type === 'animated_gif') {
+						logger.log('animated_gif details:');
+						logger.log(media.url);
+						if (media.variants) {
+							logger.log('variants found too');
+							logger.log(JSON.stringify(media.variants));
+						}
 					} else {
-						logger.log(
-							'unknown media type: ' + media.type,
-							WarningLevel.Warning,
-						);
+						logger.log('unknown format: ' + media.type, WarningLevel.Warning);
 					}
 				}
 			});
@@ -326,10 +335,13 @@ function respondToVetting(
 	msg
 		.awaitMessageComponent({ componentType: ComponentType.Button })
 		.then(interaction => {
-			logger.log(interaction.customId);
-			msg.delete();
-			if (interaction.customId.startsWith('accept')) {
+			if (interaction.customId.startsWith('twitfollow-accept-')) {
 				submitPost(tweet, settings);
+				msg.delete();
+			} else if (interaction.customId.startsWith('twitfollow-reject-')) {
+				msg.delete();
+			} else {
+				logger.log('unknown interaction: ' + logger.log(interaction.customId));
 			}
 		});
 }
@@ -341,11 +353,11 @@ async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 
 	const vettingOptions = new ActionRowBuilder<ButtonBuilder>().addComponents(
 		new ButtonBuilder()
-			.setCustomId('accept-' + tweet.tweetId)
+			.setCustomId('twitfollow-accept-' + tweet.tweetId)
 			.setLabel('Accept')
 			.setStyle(ButtonStyle.Primary),
 		new ButtonBuilder()
-			.setCustomId('reject-' + tweet.tweetId)
+			.setCustomId('twitfollow-reject-' + tweet.tweetId)
 			.setLabel('Reject')
 			.setStyle(ButtonStyle.Danger),
 	);
@@ -354,7 +366,9 @@ async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 		// video tweet
 		candidateChannel
 			.send({
-				content: tweet.postUrl.replace('twitter.com', 'vxtwitter.com'),
+				content:
+					`<#${settings.channelTarget}> ` +
+					tweet.postUrl.replace('twitter.com', 'vxtwitter.com'),
 				components: [vettingOptions],
 			})
 			.then(msg => respondToVetting(msg, tweet, settings));
@@ -362,6 +376,7 @@ async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 		// image tweet
 		candidateChannel
 			.send({
+				content: `<#${settings.channelTarget}>`,
 				embeds: getDiscordEmbedsFromImageTweet(tweet),
 				components: [vettingOptions],
 			})
@@ -369,6 +384,7 @@ async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 	} else {
 		candidateChannel
 			.send({
+				content: `<#${settings.channelTarget}>`,
 				embeds: [
 					new EmbedBuilder()
 						.setDescription(tweet.textContent === '' ? null : tweet.textContent)
@@ -395,6 +411,53 @@ function submitCandidate(tweet: Tweet, settings: FollowSettings) {
 	} else {
 		submitVettingPost(tweet, settings);
 	}
+}
+
+function manuallyRejectMessage(message: Message) {
+	message.delete();
+}
+
+async function manuallyAcceptMessage(message: Message) {
+	if (message.partial) await message.fetch();
+	const embeds = message.embeds;
+	const content = message.embeds
+		? undefined
+		: message.content.substring(message.content.indexOf(' '));
+
+	const targetChannel = discordClient.channels.resolve(
+		message.content.substring(
+			message.content.indexOf('#') + 1,
+			message.content.indexOf('>'),
+		),
+	) as TextChannel;
+
+	targetChannel.send({ content: content, embeds: embeds });
+
+	message.delete();
+}
+
+async function twitfollow_interactionCreate(
+	interaction: Interaction<CacheType>,
+): Promise<boolean> {
+	if (interaction.isMessageComponent()) {
+		const interact = interaction as MessageComponentInteraction;
+		if (interact.componentType === ComponentType.Button) {
+			if (interact.customId.startsWith('twitfollow-')) {
+				const subcommand = interact.customId.substring('twitfollow-'.length);
+				if (subcommand.startsWith('accept-')) {
+					await manuallyAcceptMessage(interact.message);
+				} else if (subcommand.startsWith('reject-')) {
+					manuallyRejectMessage(interact.message);
+				} else {
+					logger.log('unknown subcommand: ' + subcommand, WarningLevel.Warning);
+				}
+				return true;
+			}
+			return false;
+		}
+		return false;
+	}
+	return false;
 }
 
 export async function check_twitfollow() {
