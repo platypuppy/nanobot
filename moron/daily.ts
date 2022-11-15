@@ -6,6 +6,7 @@ import * as cron from 'cron';
 import { check_normie, init_normie } from './feeds/normie';
 import { check_smbc, init_smbc } from './feeds/smbc';
 import { check_twitfollow, init_twitfollow } from './feeds/twitfollow';
+import { init_pixivfollow, check_pixivfollow } from './feeds/pixivfollow';
 
 const devMode = false;
 
@@ -55,10 +56,11 @@ function run_job(job: Job) {
 // https://crontab.guru/#*_*_*_*_*
 // useful resource for writing cron schedules
 const jobs: Job[] = [
-	make_job('25 11 * * *', init_xkcd, check_xkcd, 'XKCD'),
-	make_job('40 7,9,18,23 * * *', init_normie, check_normie, 'normie'),
-	make_job('35 14 * * *', init_smbc, check_smbc, 'SMBC'),
-	make_job('2/15 * * * *', init_twitfollow, check_twitfollow, 'Twitfollow'),
+//	make_job('25 11 * * *', init_xkcd, check_xkcd, 'XKCD'),
+//	make_job('40 7,9,18,23 * * *', init_normie, check_normie, 'normie'),
+//	make_job('35 14 * * *', init_smbc, check_smbc, 'SMBC'),
+//	make_job('2/15 * * * *', init_twitfollow, check_twitfollow, 'Twitfollow'),
+	make_job('* * * * *', init_pixivfollow, check_pixivfollow, 'Pixivfollow'),
 ];
 
 let activeJobs: cron.CronJob[] = [];

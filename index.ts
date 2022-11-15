@@ -106,11 +106,11 @@ loadAllCommands();
 type InitCallback = (client: Client) => Promise<void>;
 
 let initCallbacks: InitCallback[] = [
-	stars_init,
-	reactor_init,
-	chatty_init,
+//	stars_init,
+//	reactor_init,
+//	chatty_init,
 	daily_init,
-	twitfix_init,
+//	twitfix_init,
 ];
 
 client.once('ready', async () => {
