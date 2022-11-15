@@ -327,25 +327,6 @@ async function submitPost(tweet: Tweet, settings: FollowSettings) {
 	}
 }
 
-function respondToVetting(
-	msg: Message,
-	tweet: Tweet,
-	settings: FollowSettings,
-) {
-	msg
-		.awaitMessageComponent({ componentType: ComponentType.Button })
-		.then(interaction => {
-			if (interaction.customId.startsWith('twitfollow-accept-')) {
-				submitPost(tweet, settings);
-				msg.delete();
-			} else if (interaction.customId.startsWith('twitfollow-reject-')) {
-				msg.delete();
-			} else {
-				logger.log('unknown interaction: ' + logger.log(interaction.customId));
-			}
-		});
-}
-
 async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 	let candidateChannel: TextChannel = discordClient.channels.resolve(
 		settings.vettingChannel!,
@@ -364,44 +345,37 @@ async function submitVettingPost(tweet: Tweet, settings: FollowSettings) {
 
 	if (tweet.embedVideos.length > 0) {
 		// video tweet
-		candidateChannel
-			.send({
-				content:
-					`<#${settings.channelTarget}> ` +
-					tweet.postUrl.replace('twitter.com', 'vxtwitter.com'),
-				components: [vettingOptions],
-			})
-			.then(msg => respondToVetting(msg, tweet, settings));
+		candidateChannel.send({
+			content:
+				`<#${settings.channelTarget}> ` +
+				tweet.postUrl.replace('twitter.com', 'vxtwitter.com'),
+			components: [vettingOptions],
+		});
 	} else if (tweet.embedImages.length > 0) {
 		// image tweet
-		candidateChannel
-			.send({
-				content: `<#${settings.channelTarget}>`,
-				embeds: getDiscordEmbedsFromImageTweet(tweet),
-				components: [vettingOptions],
-			})
-			.then(msg => respondToVetting(msg, tweet, settings));
+		candidateChannel.send({
+			content: `<#${settings.channelTarget}>`,
+			embeds: getDiscordEmbedsFromImageTweet(tweet),
+			components: [vettingOptions],
+		});
 	} else {
-		candidateChannel
-			.send({
-				content: `<#${settings.channelTarget}>`,
-				embeds: [
-					new EmbedBuilder()
-						.setDescription(tweet.textContent === '' ? null : tweet.textContent)
-						.setAuthor({
-							name: tweet.author.name + '(@' + tweet.author.handle + ')',
-							iconURL: tweet.author.profilePic,
-						})
-						.setFooter({
-							text: 'Twitter',
-							iconURL:
-								'https://abs.twimg.com/icons/apple-touch-icon-192x192.png',
-						})
-						.setTimestamp(tweet.creationDate),
-				],
-				components: [vettingOptions],
-			})
-			.then(msg => respondToVetting(msg, tweet, settings));
+		candidateChannel.send({
+			content: `<#${settings.channelTarget}>`,
+			embeds: [
+				new EmbedBuilder()
+					.setDescription(tweet.textContent === '' ? null : tweet.textContent)
+					.setAuthor({
+						name: tweet.author.name + '(@' + tweet.author.handle + ')',
+						iconURL: tweet.author.profilePic,
+					})
+					.setFooter({
+						text: 'Twitter',
+						iconURL: 'https://abs.twimg.com/icons/apple-touch-icon-192x192.png',
+					})
+					.setTimestamp(tweet.creationDate),
+			],
+			components: [vettingOptions],
+		});
 	}
 }
 
