@@ -6,6 +6,7 @@
     "erlpack": "github:discord/erlpack",
     "is-url": "^1.2.4",
     "node-html-parser": "^6.1.1",
+    "pixiv.ts": "^0.5.9",
     "request": "^2.88.2",
     "rss-parser": "^3.12.0",
     "twitter-api-sdk": "^1.2.1",
